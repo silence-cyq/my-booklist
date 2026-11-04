@@ -1,5 +1,6 @@
 const STORAGE_KEY = "chenyanqiu-booklist-v2";
 const TEAM_KEY = "chenyanqiu-booklist-team-v1";
+const DIRTY_KEY = "chenyanqiu-booklist-dirty-v1";
 const REPO = "silence-cyq/my-booklist";
 const BRANCH = "main";
 const DATA_PATH = "data.json";
@@ -16,7 +17,7 @@ let editingId = null;
 let toastTimer = null;
 let syncTimer = null;
 let syncInFlight = false;
-let dirty = false;
+let dirty = localStorage.getItem(DIRTY_KEY) === "1";
 
 const els = {
   search: document.getElementById("searchInput"),
@@ -574,6 +575,7 @@ function setSyncStatus(text) {
 
 function markDirty() {
   dirty = true;
+  localStorage.setItem(DIRTY_KEY, "1");
   setSyncStatus(teamMode ? "有未同步修改" : "只读模式");
   if (teamMode) {
     clearTimeout(syncTimer);
@@ -625,6 +627,8 @@ async function connectTeam() {
     team = { name, token };
     saveTeam();
     teamMode = true;
+    dirty = true;
+    localStorage.setItem(DIRTY_KEY, "1");
     updateTeamUI();
     closeTeamModal();
     showToast("已进入团队编辑模式");
@@ -640,7 +644,6 @@ function exitTeam() {
   localStorage.removeItem(TEAM_KEY);
   team = {};
   teamMode = false;
-  dirty = false;
   updateTeamUI();
   closeTeamModal();
   showToast("已退出团队编辑");
@@ -787,6 +790,7 @@ async function syncNow({ manual = false } = {}) {
     }
     if (!response.ok) throw new Error(`保存失败 ${response.status}`);
     dirty = false;
+    localStorage.removeItem(DIRTY_KEY);
     setSyncStatus(`已保存 ${formatTime(new Date())}`);
     saveState();
     renderAll();
