@@ -126,7 +126,7 @@ function mergeSeedData() {
   const knownTitles = new Set(state.books.map(book => normTitle(book.title)));
   seed.books.forEach(book => {
     if (!knownIds.has(book.id) && !knownTitles.has(normTitle(book.title))) {
-      state.books.push({ ...book, readBy: {}, deleted: false });
+      state.books.push({ ...book, readBy: book.readBy || {}, deleted: false });
       knownIds.add(book.id);
       knownTitles.add(normTitle(book.title));
     }
