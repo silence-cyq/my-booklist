@@ -55,6 +55,7 @@ const els = {
 
 normalizeState();
 mergeSeedData();
+migrateNavalToRecommended();
 migrateStructure();
 migrateReadStatus();
 normalizeState();
@@ -139,6 +140,50 @@ function mergeSeedData() {
     }
   });
   state.seedMergeId = seed.mergeId;
+  saveState();
+}
+
+function navalBaseTitle(value) {
+  return normTitle(String(value || "").split(/[：:]/)[0].replace(/[（(][^）)]*[）)]/g, ""));
+}
+
+function navalFullTitle(value) {
+  return normTitle(value);
+}
+
+function migrateNavalToRecommended() {
+  if (state.navalMergeId === seed.mergeId) return;
+  const navalSeed = seed.books.filter(book => String(book.category || "").startsWith("纳瓦尔·"));
+  if (!navalSeed.length) return;
+  state.themes = state.themes.filter(theme => theme.id !== "naval");
+  state.categories = state.categories.filter(category => category.theme !== "naval");
+  state.books = state.books.filter(book =>
+    book.theme !== "naval" && !String(book.category || "").startsWith("纳瓦尔·")
+  );
+  const byFullTitle = new Map(state.books.map(book => [navalFullTitle(book.title), book]));
+  const byBaseTitle = new Map();
+  state.books.forEach(book => {
+    const key = navalBaseTitle(book.title);
+    if (!byBaseTitle.has(key)) byBaseTitle.set(key, book);
+  });
+  navalSeed.forEach(seedBook => {
+    const existing =
+      byFullTitle.get(navalFullTitle(seedBook.title)) ||
+      byBaseTitle.get(navalBaseTitle(seedBook.title));
+    if (existing) {
+      existing.theme = seedBook.theme;
+      existing.category = seedBook.category;
+      if (!existing.note) existing.note = seedBook.note;
+      if (!existing.intro || existing.intro.includes("收录于") || existing.intro.length < 12) {
+        existing.intro = seedBook.intro;
+      }
+      existing.isNew = true;
+      existing.addedAt = existing.addedAt || seedBook.addedAt;
+    } else {
+      state.books.push({ ...seedBook, readBy: seedBook.readBy || {}, deleted: false });
+    }
+  });
+  state.navalMergeId = seed.mergeId;
   saveState();
 }
 
